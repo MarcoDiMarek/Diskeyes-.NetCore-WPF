@@ -26,11 +26,11 @@ namespace DiskeyesCore
         public event PartialResultsHandler PartialResultsSorted;
         public event TableInitializedHandler TableInitialized;
         private HashSet<int> available;
-        private Dictionary<T, LineDBCol> fields;
+        private Dictionary<T, Column> fields;
         private CancellationTokenSource cancellationTokenSource;
         private List<Task> tasks;
         private SearchResults<T, K> results;
-        public Table(Dictionary<T, LineDBCol> columns, bool initializeNow = false, bool blocking = false)
+        public Table(Dictionary<T, Column> columns, bool initializeNow = false, bool blocking = false)
         {
             fields = columns;
             if (initializeNow)

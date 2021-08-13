@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 
 namespace DiskeyesCore
 {
-    abstract class LineDBCol
+    abstract class Column
     {
         public abstract Task<bool> AppendHot();
         public abstract Task<bool> Search(string[] values, bool[] desiredPresence, CancellationToken token, IProgress<SearchBatch> progress, int identifier);
         public abstract Task<bool> Initialize();
     }
-    class LineDBCol<T> : LineDBCol
+    class Column<T> : Column
     {
         #region Properties
         public int BulkInRAM { get { return Math.Abs(bulkInRAM); } }
@@ -44,7 +44,7 @@ namespace DiskeyesCore
         protected Encoding FileEncoding;
         protected string AvailabilityMarker;
         #endregion
-        public LineDBCol(string name, Encoding encoding, Func<T, string> serializer, Func<string, T> deserializer, int inRAMsize = 300, string availabilityMarker = "")
+        public Column(string name, Encoding encoding, Func<T, string> serializer, Func<string, T> deserializer, int inRAMsize = 300, string availabilityMarker = "")
         {
             this.name = name;
             FileEncoding = encoding;
@@ -306,9 +306,6 @@ namespace DiskeyesCore
         /// </summary>
         /// <param name="values">Values to search for</param>
         /// <param name="desiredPresence">Boolean vector of desired presence (true = desired presence, false = desired absence).</param>
-        /// <param name="token"></param>
-        /// <param name="progress"></param>
-        /// <param name="identifier"></param>
         /// <returns></returns>
         public override async Task<bool> Search(string[] values, bool[] desiredPresence, CancellationToken token, IProgress<SearchBatch> progress, int identifier = 0)
         {
@@ -345,6 +342,34 @@ namespace DiskeyesCore
             });
             return true;
         }
+
+        public async Task<bool> Retrieve(int[] lines, CancellationToken token, IProgress<SearchBatch<T>> progress, int identifier = 0)
+        {
+            await Task.Run(() =>
+            {
+                int highestIndex = lines.Max();
+                var seeked = lines.ToHashSet();
+                foreach (var batch in Access())
+                {
+                    if (batch.First().Item1 > highestIndex)
+                        break;
+
+                    var matches = from entry in batch
+                                  where seeked.Contains(entry.Item1)
+                                  select entry;
+
+                    var data = matches.ToList().AsReadOnly();
+
+                    if (data.Count > 0)
+                    {
+                        progress.Report(new SearchBatch<T>(data, identifier));
+                    }
+                    if (token.IsCancellationRequested) return;
+                }
+            });
+            return true;
+        }
+
 
         public virtual void Change(int index, string value)
         {
@@ -542,7 +567,7 @@ namespace DiskeyesCore
         {
             return DataPeek;
         }
-        ~LineDBCol()
+        ~Column()
         {
             AppendHot().RunSynchronously();
         }

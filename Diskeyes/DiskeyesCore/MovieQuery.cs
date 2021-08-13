@@ -24,8 +24,18 @@ namespace DiskeyesCore
         public readonly int CategoryIdentifier;
         public SearchBatch(ReadOnlyCollection<(int, bool[])> boolValues, int categoryIdentifier = 0)
         {
-            this.CategoryIdentifier = categoryIdentifier;
+            CategoryIdentifier = categoryIdentifier;
             BoolValues = boolValues;
+        }
+    }
+    struct SearchBatch<T>
+    {
+        public readonly ReadOnlyCollection<(int, T)> Values;
+        public readonly int CategoryIdentifier;
+        public SearchBatch(ReadOnlyCollection<(int, T)> values, int categoryIdentifier = 0)
+        {
+            CategoryIdentifier = categoryIdentifier;
+            Values = values;
         }
     }
 

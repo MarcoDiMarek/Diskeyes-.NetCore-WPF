@@ -10,10 +10,10 @@ namespace DiskeyesCore
     {
         private static Func<string, string> lambdaDummy = x => x;
         protected Dictionary<string, int> tokens;
-        private LineDBCol<string> vocabDB;
+        private Column<string> vocabDB;
         public Vocabulary(string name)
         {
-            vocabDB = new LineDBCol<string>(name, Encoding.UTF8, lambdaDummy, lambdaDummy, 1);
+            vocabDB = new Column<string>(name, Encoding.UTF8, lambdaDummy, lambdaDummy, 1);
             Task.WaitAll(vocabDB.Initialize());
             tokens = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             tokens.EnsureCapacity(vocabDB.EntriesCount);

@@ -17,26 +17,27 @@ namespace DiskeyesCore
         public event PartialResultsHandler PartialResultsSorted;
         public event ReadyStateHandler ReadyStateChanged;
         private Table<SearchCategory, MovieSearchEntry> table;
-        private LineDBCol<int> ratings;
-        private LineDBCol<string> descriptions;
-        private LineDBCol<string> titles;
-        private LineDBCol<int[]> descriptionIndices;
-        private LineDBCol<int[]> titleIndices;
-        private LineDBCol<int[]> movieActors;
+        private Column<int> ratings;
+        private Column<string> descriptions;
+        private Column<string> titles;
+        private Column<int[]> descriptionIndices;
+        private Column<int[]> titleIndices;
+        private Column<int[]> movieActors;
         private static Func<string, int> toInt = x => string.IsNullOrEmpty(x) ? -1 : int.Parse(x);
         private static Func<int, string> fromInt = x => x.ToString();
         private static Func<string, string> dummy = x => x;
         private static Func<string, int[]> toArrayInt = x => Utilities.ConvertEach(x.Split(","), toInt);
         private static Func<int[], string> fromArrayInt = x => string.Join(",", Utilities.ConvertEach(x, fromInt));
+
         public MovieDB()
         {
-            ratings = new LineDBCol<int>("ratings", Encoding.ASCII, fromInt, toInt);
-            descriptions = new LineDBCol<string>("text_descriptions", Encoding.UTF8, x => x.Replace("\n", ""), dummy);
-            descriptionIndices = new LineDBCol<int[]>("descriptions", Encoding.ASCII, fromArrayInt, toArrayInt);
-            titles = new LineDBCol<string>("text_titles", Encoding.UTF8, x => x.Replace("\n", ""), dummy);
-            titleIndices = new LineDBCol<int[]>("titles", Encoding.ASCII, fromArrayInt, toArrayInt);
-            movieActors = new LineDBCol<int[]>("actors", Encoding.ASCII, fromArrayInt, toArrayInt);
-            var columns = new Dictionary<SearchCategory, LineDBCol>()
+            ratings = new Column<int>("ratings", Encoding.ASCII, fromInt, toInt);
+            descriptions = new Column<string>("text_descriptions", Encoding.UTF8, x => x.Replace("\n", ""), dummy);
+            descriptionIndices = new Column<int[]>("descriptions", Encoding.ASCII, fromArrayInt, toArrayInt);
+            titles = new Column<string>("text_titles", Encoding.UTF8, x => x.Replace("\n", ""), dummy);
+            titleIndices = new Column<int[]>("titles", Encoding.ASCII, fromArrayInt, toArrayInt);
+            movieActors = new Column<int[]>("actors", Encoding.ASCII, fromArrayInt, toArrayInt);
+            var columns = new Dictionary<SearchCategory, Column>()
             {
                 //{SearchCategory.rating , ratings },
                 //{SearchCategory.description , descriptions },
@@ -54,8 +55,16 @@ namespace DiskeyesCore
             ReadyStateChanged?.Invoke(true);
             return true;
         }
+        private void OnTitlesBatch(SearchBatch<string> titles)
+        {
+
+        }
         private void OnResultsSorted(KeyValuePair<int, MovieSearchEntry>[] results)
         {
+            // A temporary function, needs to be replaced by a generic one which retrieves data values for collected indices
+            //var progress = new Progress<SearchBatch<string>>(OnTitlesBatch);
+            //var token = new CancellationTokenSource().Token;
+            //Task.Run(() => titles.Retrieve(results.Select(x => x.Key).ToArray(), token, progress, (int)SearchCategory.title));
             PartialResultsSorted?.Invoke(results);
         }
         private void OnSearchDone(SearchResults<SearchCategory, MovieSearchEntry> results)
