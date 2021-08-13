@@ -66,37 +66,8 @@ namespace DiskeyesCore
         public async Task<bool> Search(MovieQuery query)
         {
             return await table.Search(query);
-            //Task.Run(async () =>
-            //{
-            //    if (tasks != null && tasks.Count > 0)
-            //        await CancelSearch();
-
-            //    results = new SearchResults<SearchCategory, MovieSearchEntry>(5000, 100);
-            //    results.ResultsOrdered += OnPartialResultsSorted;
-            //    cancellationTokenSource = new CancellationTokenSource();
-            //    var token = cancellationTokenSource.Token;
-            //    var progress = new Progress<SearchBatch>(ProgressReporter);
-            //    tasks = new List<Task>();
-
-            //    foreach (var searchField in query.QueryData.Keys.Intersect(columns.Keys))
-            //    {
-            //        var column = fields[searchField];
-            //        var task = column.Search(query.QueryData[searchField], token, progress, (int)searchField);
-            //        tasks.Add(task);
-            //    }
-
-            //    await Task.WhenAll(tasks);
-            //    tasks.Clear();
-            //    results.Seal();
-            //    SearchFinished?.Invoke(results);
-            //    Console.WriteLine("Sealed results");
-            //});
         }
 
-        private void OnPartialResultsSorted(KeyValuePair<int, MovieSearchEntry>[] sorted)
-        {
-            PartialResultsSorted?.Invoke(sorted);
-        }
         public async Task<bool> CancelSearch()
         {
             return await table.CancelSearch();
