@@ -17,7 +17,7 @@ namespace DiskeyesCore
         actorsIndices,
         rating,
     }
-    
+
     struct SearchBatch
     {
         public readonly ReadOnlyCollection<(int, bool[])> BoolValues;
@@ -29,9 +29,19 @@ namespace DiskeyesCore
         }
     }
 
+    struct QueryEntry
+    {
+        public string[] values;
+        public bool[] desiredPresence;
+        public IEnumerable<(string, bool)> Pairs()
+        {
+            return values.Zip(desiredPresence);
+        }
+    }
+
     interface IQuery<T>
     {
-        public ReadOnlyDictionary<T, string[]> GetQueryData();
+        public ReadOnlyDictionary<T, QueryEntry> GetQueryData();
     }
 
     /// <summary>
@@ -39,43 +49,76 @@ namespace DiskeyesCore
     /// </summary>
     class MovieQuery : IQuery<SearchCategory>
     {
-        public readonly ReadOnlyDictionary<SearchCategory, string[]> QueryData;
+        public readonly ReadOnlyDictionary<SearchCategory, QueryEntry> QueryData;
         private static Vocabulary ActorsVocab = new Vocabulary("vocabulary_actors");
         private static Vocabulary GeneralVocab = new Vocabulary("vocabulary_general");
-        public MovieQuery(string text, Dictionary<SearchCategory, Func<string, string[]>> tokenizers = null, Func<string, Dictionary<SearchCategory, string>> customParser = null)
+        public MovieQuery(string text, Dictionary<SearchCategory, Func<string, (string[], bool[])>> tokenizers = null, Func<string, Dictionary<SearchCategory, string>> customParser = null)
         {
             var parser = customParser is null ? DefaultParser : customParser;
             if (tokenizers is null)
             {
-                tokenizers = new Dictionary<SearchCategory, Func<string, string[]>>()
+                tokenizers = new Dictionary<SearchCategory, Func<string, (string[], bool[])>>()
                 {
                     { SearchCategory.actors, CommaTokenizer },
                     { SearchCategory.description, CommaTokenizer},
                     { SearchCategory.title, SpaceTokenizer },
                 };
             }
-            var data = new Dictionary<SearchCategory, string[]>();
+            var data = new Dictionary<SearchCategory, QueryEntry>();
             foreach (var (category, fieldText) in parser(text))
             {
                 var tokenizer = tokenizers[category];
-                data.Add(category, tokenizer(fieldText));
+                var (tokens, presence) = tokenizer(fieldText);
+                QueryEntry entry = new QueryEntry()
+                {
+                    values = tokens,
+                    desiredPresence = presence
+                };
+                data.Add(category, entry);
             }
             AssignIndices(ref data);
-            QueryData = new ReadOnlyDictionary<SearchCategory, string[]>(data);
+            QueryData = new ReadOnlyDictionary<SearchCategory, QueryEntry>(data);
         }
-        public ReadOnlyDictionary<SearchCategory, string[]> GetQueryData()
+        public ReadOnlyDictionary<SearchCategory, QueryEntry> GetQueryData()
         {
             return QueryData;
         }
-        private static string[] SpaceTokenizer(string categoryText)
+        private static (string[], bool[]) SpaceTokenizer(string categoryText)
         {
-            var tokens = categoryText.Split(" ").Select(x => x.Trim().ToLower());
-            return tokens.ToArray();
+            const string pattern = "(NOT )?\\w+";
+            return RegexTokenizer(categoryText, pattern);
         }
-        private static string[] CommaTokenizer(string categoryText)
+        private static (string[], bool[]) CommaTokenizer(string categoryText)
         {
-            var tokens = categoryText.Split(",").Select(x => x.Trim().ToLower());
-            return tokens.ToArray();
+            const string pattern = "(NOT )?(\\w+ ?)+";
+            return RegexTokenizer(categoryText, pattern);
+        }
+        private static (string[], bool[]) RegexTokenizer(string categoryText, string pattern)
+        {
+            var matches = from match in Regex.Matches(categoryText, pattern, RegexOptions.Compiled)
+                          where match.Success
+                          select match.Value;
+            List<string> tokens = matches.ToList();
+            List<bool> desired = Enumerable.Repeat(true, tokens.Count).ToList();
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                var token = tokens[i];
+                if (token.StartsWith("NOT "))
+                {
+                    token = token.Substring(4).Trim().ToLower();
+                    if (token.Length == 0)
+                    {
+                        tokens.RemoveAt(i);
+                        desired.RemoveAt(i);
+                    }
+                    else
+                    {
+                        tokens[i] = token;
+                        desired[i] = false;
+                    }
+                }
+            }
+            return (tokens.ToArray(), desired.ToArray());
         }
 
         private static Dictionary<SearchCategory, string> DefaultParser(string queryText)
@@ -110,23 +153,33 @@ namespace DiskeyesCore
             return output;
         }
 
-        private static void AssignIndices(ref Dictionary<SearchCategory, string[]> tokenized)
+        private static void AssignIndices(ref Dictionary<SearchCategory, QueryEntry> tokenizedEntries)
         {
-            var tokenCategories = new SearchCategory[]
+            var indexedCategories = new SearchCategory[]
             {
                 SearchCategory.title,
-                SearchCategory.description,
-                SearchCategory.actors
+                SearchCategory.actors,
+                SearchCategory.description
             };
-
-            foreach (var tokenCategory in tokenCategories.Intersect(tokenized.Keys))
+            // QueryEntry is just a struct, so it is always value-copied.
+            // Changes per collection member do not propagate to collection unless reassigned.
+            foreach (var tokenCategory in indexedCategories.Intersect(tokenizedEntries.Keys))
             {
-                var (vocabulary, indexCategory) = TokenToIndexer(tokenCategory);
-                var tokens = tokenized[tokenCategory];
-                tokenized[indexCategory] = vocabulary.FindIndices(tokens).Select(x => x.ToString()).ToArray();
+                var (vocabulary, indexCategory) = GetIndexer(tokenCategory);
+                var entry = tokenizedEntries[tokenCategory];
+                var found = vocabulary.FindIndices(entry.values);
+                var matches = entry.Pairs()
+                              .Where(x => found.ContainsKey(x.Item1))
+                              .ToDictionary(x => x.Item1, x => x.Item2);
+
+                entry.values = matches.Keys
+                               .Select(x => found[x].ToString())
+                               .ToArray();
+                entry.desiredPresence = matches.Values.ToArray();
+                tokenizedEntries[indexCategory] = entry;
             }
         }
-        private static (Vocabulary, SearchCategory) TokenToIndexer(SearchCategory tokenCategory)
+        private static (Vocabulary, SearchCategory) GetIndexer(SearchCategory tokenCategory)
         {
             // Switch is internalized as a dictionary CONSTANT, therefore more efficient
             switch (tokenCategory)

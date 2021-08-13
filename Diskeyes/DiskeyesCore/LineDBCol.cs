@@ -12,7 +12,7 @@ namespace DiskeyesCore
     abstract class LineDBCol
     {
         public abstract Task<bool> AppendHot();
-        public abstract Task<bool> Search(string[] values, CancellationToken token, IProgress<SearchBatch> progress, int identifier);
+        public abstract Task<bool> Search(string[] values, bool[] desiredPresence, CancellationToken token, IProgress<SearchBatch> progress, int identifier);
         public abstract Task<bool> Initialize();
     }
     class LineDBCol<T> : LineDBCol
@@ -298,32 +298,42 @@ namespace DiskeyesCore
         {
             return Utilities.MergeDictionaries<int, string>(SavedChanges, HotChanges);
         }
-
-        public override async Task<bool> Search(string[] values, CancellationToken token, IProgress<SearchBatch> progress, int identifier = 0)
+        /// <summary>
+        /// Searches for the presence or absence of the provided values asynchronously and passes matches to the Progress Reporter.
+        /// The final boolean vector reflects NEITHER the presence NOR the absence of respective values in the entry,
+        /// but rather whether the specific value met the criteria for desired presence.
+        /// A missing value will return true if the value is not wanted in the query, false if its presence is desired.
+        /// </summary>
+        /// <param name="values">Values to search for</param>
+        /// <param name="desiredPresence">Boolean vector of desired presence (true = desired presence, false = desired absence).</param>
+        /// <param name="token"></param>
+        /// <param name="progress"></param>
+        /// <param name="identifier"></param>
+        /// <returns></returns>
+        public override async Task<bool> Search(string[] values, bool[] desiredPresence, CancellationToken token, IProgress<SearchBatch> progress, int identifier = 0)
         {
             await Task.Run(() =>
             {
-                Console.WriteLine("starting");
-                //Parallel.ForEach(ReadCSVBatches(), batch =>
-                //{
                 foreach (var batch in ReadCSVBatches())
                 {
                     var matches = new List<(int, bool[])>();
                     foreach (var (index, entry) in batch)
                     {
-                        var presence = new bool[values.Length];
+                        // initialize the vector with opposite values
+                        // seeked -> unfound, not seeked -> found
+                        var vector = desiredPresence.Select(x=>!x).ToArray();
                         bool match = false;
                         for (int i = 0; i < values.Length; i++)
                         {
                             if (entry.Contains(values[i]))
                             {
-                                presence[i] = true;
+                                vector[i] = desiredPresence[i];
                                 match = true;
                             }
                         }
                         if (match)
                         {
-                            matches.Add((index, presence));
+                            matches.Add((index, vector));
                         }
                     }
                     if (matches.Count > 0)
@@ -332,9 +342,7 @@ namespace DiskeyesCore
                     }
                     if (token.IsCancellationRequested) return;
                 }
-                //});
             });
-            Console.WriteLine("Finished Searching");
             return true;
         }
 

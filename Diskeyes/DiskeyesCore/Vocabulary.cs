@@ -65,20 +65,20 @@ namespace DiskeyesCore
         /// <param name="index">Index of the token.</param>
         /// <returns>Token</returns>
         public string Token(int index) { return tokens.First(x => x.Value == index).Key; }
-        public List<int> FindIndices(HashSet<string> tokenizedWords)
+
+        public Dictionary<string, int> FindIndices(IEnumerable<string> words)
         {
-            var indices = new List<int>();
-            foreach (string word in tokenizedWords)
+            var matches = new Dictionary<string, int>();
+            foreach (string word in words)
             {
                 int index;
                 if (tokens.TryGetValue(word, out index))
-                    indices.Add(index);
+                {
+                    matches.Add(word, index);
+                }
+
             }
-            return indices;
-        }
-        public List<int> FindIndices(IEnumerable<string> words)
-        {
-            return FindIndices(words.ToHashSet());
+            return matches;
         }
         /// <summary>
         /// Returns index of the searched token. 

@@ -87,7 +87,9 @@ namespace DiskeyesCore
                 T field = searchField;
                 int identifier = Unsafe.As<T, int>(ref field);
                 var column = fields[searchField];
-                var task = column.Search(queryData[searchField], token, progress, identifier);
+                var toSearch = queryData[searchField].values;
+                var presence = queryData[searchField].desiredPresence;
+                var task = column.Search(toSearch, presence, token, progress, identifier);
                 tasks.Add(task);
             }
 

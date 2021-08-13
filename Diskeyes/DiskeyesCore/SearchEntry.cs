@@ -6,6 +6,8 @@ namespace DiskeyesCore
 {
     interface ISearchEntry<T>
     {
+        // Interface is needed to allow for instantiation of a generic type of search entry, 
+        // as abstract classes cannot be instantiated
         public void Update(T category, bool[] presence);
         public void Update(T category, string value);
         public int GetScore();

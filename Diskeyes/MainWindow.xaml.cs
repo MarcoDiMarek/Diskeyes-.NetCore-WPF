@@ -56,6 +56,8 @@ namespace Diskeyes
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string previousText = SearchBox.Text;
+            SomeTextBox.Text = previousText;
+
             if (previousText != string.Empty)
             {
                 Task.Run(async () =>
@@ -71,13 +73,13 @@ namespace Diskeyes
                         var query = new MovieQuery(newText);
                         Dispatcher.Invoke(() =>
                         {
-                            if (query.QueryData.ContainsKey(SearchCategory.titleIndices))
+                            if (query.QueryData.ContainsKey(SearchCategory.title))
                             {
-                                SomeTextBox.Text = "Searching titles " + string.Join(" ", query.QueryData[SearchCategory.titleIndices]);
+                                SomeTextBox.Text = "Searching titles " + string.Join(" ", query.QueryData[SearchCategory.title].values);
                             }
-                            else if (query.QueryData.ContainsKey(SearchCategory.actorsIndices))
+                            else if (query.QueryData.ContainsKey(SearchCategory.actors))
                             {
-                                SomeTextBox.Text = "Searching actors " + string.Join(" ", query.QueryData[SearchCategory.actorsIndices]);
+                                SomeTextBox.Text = "Searching actors " + string.Join(" ", query.QueryData[SearchCategory.actors].values);
                             }
                         });
                         await db.Search(query);
