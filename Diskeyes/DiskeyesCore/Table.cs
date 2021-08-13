@@ -61,7 +61,6 @@ namespace DiskeyesCore
         public void ProgressReporter(SearchBatch additions)
         {
             int identifier = additions.CategoryIdentifier;
-            //T category = (T)(object)identifier;
             T category = Unsafe.As<int, T>(ref identifier);
             foreach (var (index, presence) in additions.BoolValues)
             {

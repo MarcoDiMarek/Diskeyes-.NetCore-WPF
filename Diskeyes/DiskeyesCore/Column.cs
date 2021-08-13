@@ -319,16 +319,14 @@ namespace DiskeyesCore
                         // initialize the vector with opposite values
                         // seeked -> unfound, not seeked -> found
                         var vector = desiredPresence.Select(x=>!x).ToArray();
-                        bool match = false;
                         for (int i = 0; i < values.Length; i++)
                         {
                             if (entry.Contains(values[i]))
                             {
                                 vector[i] = desiredPresence[i];
-                                match = true;
                             }
                         }
-                        if (match)
+                        if (vector.Any(x=>x))
                         {
                             matches.Add((index, vector));
                         }

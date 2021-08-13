@@ -42,18 +42,18 @@ namespace Diskeyes
         {
             Dispatcher.Invoke(() =>
              {
-                 UIInfoText.Text = "Here are top 10 matching lines sorted alphabetically.";
+                 UIInfoText.Text = "Here are top 10 matching lines sorted alphabetically.\n";
                  int toTake = Math.Min(results.Results.Count, 10);
                  foreach (var result in results.Results.Take(toTake))
                  {
                      var entry = result.Value;
-                     UIInfoText.Text += string.Format("Line index {0}, Actor matches {1} Title Matches {2} Description Matches {3}",
-                         result.Key, entry.actors, entry.titleIndices, entry.descriptionIndices);
+                     UIInfoText.Text += string.Format("Line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",
+                         result.Key, result.Value.Score, string.Join(",", entry.actors.Select(x => x.ToString())), string.Join(",", entry.titleIndices.Select(x => x.ToString())), string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
                      UIInfoText.Text += "\n";
                  }
                  //UIInfoText.Text = string.Join(",", results.Results.Select(x => x.Key.ToString()));
+                 BusyBar.IsIndeterminate = false;
              });
-            BusyBar.IsIndeterminate = false;
         }
 
         void PrintPartialResults(KeyValuePair<int, MovieSearchEntry>[] results)
