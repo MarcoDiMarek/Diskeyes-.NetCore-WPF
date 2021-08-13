@@ -33,7 +33,8 @@ namespace Diskeyes
                 db.PartialResultsSorted += PrintPartialResults;
                 Dispatcher.Invoke(() =>
                 {
-                    SomeTextBox.Text = "Ready";
+                    UIInfoText.Text = "Ready";
+                    BusyBar.IsIndeterminate = false;
                 });
             });
         }
@@ -41,25 +42,36 @@ namespace Diskeyes
         {
             Dispatcher.Invoke(() =>
              {
-                 SomeTextBox.Text = string.Join(",", results.Results.Select(x => x.Key.ToString()));
+                 UIInfoText.Text = "Here are top 10 matching lines sorted alphabetically.";
+                 int toTake = Math.Min(results.Results.Count, 10);
+                 foreach (var result in results.Results.Take(toTake))
+                 {
+                     var entry = result.Value;
+                     UIInfoText.Text += string.Format("Line index {0}, Actor matches {1} Title Matches {2} Description Matches {3}",
+                         result.Key, entry.actors, entry.titleIndices, entry.descriptionIndices);
+                     UIInfoText.Text += "\n";
+                 }
+                 //UIInfoText.Text = string.Join(",", results.Results.Select(x => x.Key.ToString()));
              });
+            BusyBar.IsIndeterminate = false;
         }
 
         void PrintPartialResults(KeyValuePair<int, MovieSearchEntry>[] results)
         {
             Dispatcher.Invoke(() =>
             {
-                SomeTextBox.Text = "Partial " + string.Join(",", results.Take(10).Select(x => x.Key.ToString()));
+                UIInfoText.Text = "Partial results return these lines: " + string.Join(",", results.Take(10).Select(x => x.Key.ToString()));
             });
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string previousText = SearchBox.Text;
-            SomeTextBox.Text = previousText;
+            UIInfoText.Text = previousText;
 
             if (previousText != string.Empty)
             {
+                BusyBar.IsIndeterminate = true;
                 Task.Run(async () =>
                 {
                     await Task.Delay(1000);
@@ -75,11 +87,11 @@ namespace Diskeyes
                         {
                             if (query.QueryData.ContainsKey(SearchCategory.title))
                             {
-                                SomeTextBox.Text = "Searching titles " + string.Join(" ", query.QueryData[SearchCategory.title].values);
+                                UIInfoText.Text = "Searching titles " + string.Join(" ", query.QueryData[SearchCategory.title].values);
                             }
                             else if (query.QueryData.ContainsKey(SearchCategory.actors))
                             {
-                                SomeTextBox.Text = "Searching actors " + string.Join(" ", query.QueryData[SearchCategory.actors].values);
+                                UIInfoText.Text = "Searching actors " + string.Join(" ", query.QueryData[SearchCategory.actors].values);
                             }
                         });
                         await db.Search(query);

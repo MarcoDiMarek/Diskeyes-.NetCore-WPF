@@ -5,14 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Diskeyes"
         mc:Ignorable="d"
+        Background="#171717"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="155*"/>
-            <ColumnDefinition Width="573*"/>
-            <ColumnDefinition Width="72*"/>
+            <!--<ColumnDefinition Width="155*"/>-->
         </Grid.ColumnDefinitions>
-        <TextBlock Name="SomeTextBox" Text="whatever" Grid.ColumnSpan="3" ></TextBlock>
-        <TextBox Name="SearchBox" HorizontalAlignment="Left" Margin="51,143,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="681" TextChanged="SearchBox_TextChanged" Grid.ColumnSpan="3"/>
+        <StackPanel>
+            <TextBlock Name="UIInfoText" Margin="10" HorizontalAlignment="Center" Foreground="White" Text="Initializing" Grid.ColumnSpan="3" TextWrapping="Wrap"></TextBlock>
+            <ProgressBar Name="BusyBar" IsIndeterminate="True" Foreground="Yellow"/>
+            <TextBox Name="SearchBox" HorizontalAlignment="Left" Margin="51,143,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="681" TextChanged="SearchBox_TextChanged" Grid.ColumnSpan="3"/>
+        </StackPanel>
     </Grid>
 </Window>
