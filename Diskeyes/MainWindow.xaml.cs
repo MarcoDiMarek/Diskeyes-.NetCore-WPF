@@ -21,13 +21,14 @@ namespace Diskeyes
     /// </summary>
     public partial class MainWindow : Window
     {
-        MovieDB db;
+        DiskeyesCore.MovieDB db;
         public MainWindow()
         {
             InitializeComponent();
-            Task.Run(() =>
+            Task.Run(async () =>
             {
-                db = new MovieDB();
+                db = new DiskeyesCore.MovieDB();
+                await db.Initialize();
                 db.SearchFinished += PrintResults;
                 db.PartialResultsSorted += PrintPartialResults;
                 Dispatcher.Invoke(() =>
@@ -36,19 +37,19 @@ namespace Diskeyes
                 });
             });
         }
-        void PrintResults(SearchResults results)
+        void PrintResults(SearchResults<SearchCategory, MovieSearchEntry> results)
         {
             Dispatcher.Invoke(() =>
              {
-                 SomeTextBox.Text = string.Join(",", results.Results.Select(x => x.Value.index.ToString()));
+                 SomeTextBox.Text = string.Join(",", results.Results.Select(x => x.Key.ToString()));
              });
         }
 
-        void PrintPartialResults(KeyValuePair<int, SearchEntry>[] results)
+        void PrintPartialResults(KeyValuePair<int, MovieSearchEntry>[] results)
         {
             Dispatcher.Invoke(() =>
             {
-                SomeTextBox.Text = "Partial " + string.Join(",", results.Take(10).Select(x => x.Value.index.ToString()));
+                SomeTextBox.Text = "Partial " + string.Join(",", results.Take(10).Select(x => x.Key.ToString()));
             });
         }
 
@@ -67,7 +68,7 @@ namespace Diskeyes
                     });
                     if (newText == previousText)
                     {
-                        var query = new Query(newText);
+                        var query = new MovieQuery(newText);
                         Dispatcher.Invoke(() =>
                         {
                             if (query.QueryData.ContainsKey(SearchCategory.titleIndices))
@@ -79,7 +80,7 @@ namespace Diskeyes
                                 SomeTextBox.Text = "Searching actors " + string.Join(" ", query.QueryData[SearchCategory.actorsIndices]);
                             }
                         });
-                        db.Search(query);
+                        await db.Search(query);
                     }
                 });
             }

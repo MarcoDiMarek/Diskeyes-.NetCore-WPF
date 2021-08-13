@@ -7,32 +7,31 @@ using System.Linq;
 
 namespace DiskeyesCore
 {
-    class SearchResults
+    class SearchResults<T, K> where K : ISearchEntry<T>, new()
     {
-        public delegate void ResultsOrderedHandler(KeyValuePair<int, SearchEntry>[] results);
+        public delegate void ResultsOrderedHandler(KeyValuePair<int, K>[] results);
         public event ResultsOrderedHandler ResultsOrdered;
-        public ReadOnlyDictionary<int, SearchEntry> Results { get { return new ReadOnlyDictionary<int, SearchEntry>(results); } }
-        private ConcurrentDictionary<int, SearchEntry> results;
+        public ReadOnlyDictionary<int, K> Results { get { return new ReadOnlyDictionary<int, K>(results); } }
+        private ConcurrentDictionary<int, K> results;
         const float MaxCountThreshold = 1.5f;
         private int MaxCount;
         private int MaxFinalCount;
-        private int average = 0;
         public SearchResults(int maxCount = int.MaxValue, int maxFinalCount = int.MaxValue)
         {
-            results = new ConcurrentDictionary<int, SearchEntry>();
+            results = new ConcurrentDictionary<int, K>();
             MaxCount = maxCount;
             MaxFinalCount = maxFinalCount;
         }
-        public void Add(int index, SearchCategory category, bool[] presence)
+        public void Add(int index, T category, bool[] presence)
         {
-            SearchEntry entry;
+            K entry;
             if (results.TryGetValue(index, out entry))
             {
                 entry.Update(category, presence);
             }
             else
             {
-                entry = new SearchEntry(index);
+                entry = new K();
                 entry.Update(category, presence);
                 results.TryAdd(index, entry);
                 if(results.Count > MaxCount * MaxCountThreshold)
@@ -45,8 +44,8 @@ namespace DiskeyesCore
         {
             if (results.Count > max)
             {
-                var bestResults = results.ToArray().OrderByDescending(x => x.Value.Score).Take(max).ToArray();
-                results = new ConcurrentDictionary<int, SearchEntry>(bestResults);
+                var bestResults = results.ToArray().OrderByDescending(x => x.Value.GetScore()).Take(max).ToArray();
+                results = new ConcurrentDictionary<int, K>(bestResults);
                 ResultsOrdered?.Invoke(bestResults);
                 Console.WriteLine("Trimmed size to " + results.Count.ToString());
             }
@@ -56,8 +55,8 @@ namespace DiskeyesCore
             lock (results) {
                 if (results.Count > MaxFinalCount)
                 {
-                    var bestResults = results.ToArray().OrderByDescending(x => x.Value.Score).Take(MaxFinalCount);
-                    results = new ConcurrentDictionary<int, SearchEntry>(bestResults);
+                    var bestResults = results.ToArray().OrderByDescending(x => x.Value.GetScore()).Take(MaxFinalCount);
+                    results = new ConcurrentDictionary<int, K>(bestResults);
                     GC.Collect();
                 }
             }

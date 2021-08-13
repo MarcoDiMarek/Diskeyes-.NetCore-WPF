@@ -17,77 +17,7 @@ namespace DiskeyesCore
         actorsIndices,
         rating,
     }
-    class SearchEntry
-    {
-        public bool[] titleIndices;
-        public bool[] descriptionIndices;
-        public bool[] actors;
-        public string title;
-        public string description;
-        public readonly int index;
-        public int Score { get { return score; } }
-        private int score;
-        public SearchEntry(int index)
-        {
-            this.index = index;
-
-            score = 0;
-            description = null;
-            title = null;
-            // ENUMERABLES:
-            actors = new bool[0];
-            descriptionIndices = new bool[0];
-            titleIndices = new bool[0];
-        }
-        private void SetScore()
-        {
-            score = titleIndices.Count(x => x) * 10
-                    + descriptionIndices.Count(x => x)
-                    + actors.Count(x => x) * 5;
-        }
-        public void Update(SearchCategory category, bool[] presence)
-        {
-            switch (category)
-            {
-                case SearchCategory.descriptionIndices:
-                    {
-                        descriptionIndices = presence;
-                        break;
-                    }
-                case SearchCategory.titleIndices:
-                    {
-                        titleIndices = presence;
-                        break;
-                    }
-                case SearchCategory.actorsIndices:
-                    {
-                        actors = presence;
-                        break;
-                    }
-                default: throw new ArgumentException();
-            }
-            SetScore();
-        }
-        public void Update(SearchCategory category, string text)
-        {
-            switch (category)
-            {
-                case SearchCategory.title:
-                    {
-                        title = text;
-                        break;
-                    }
-                case SearchCategory.description:
-                    {
-                        description = text;
-                        break;
-                    }
-                default: throw new ArgumentException();
-            }
-            SetScore();
-        }
-
-    }
+    
     struct SearchBatch
     {
         public readonly ReadOnlyCollection<(int, bool[])> BoolValues;
@@ -99,12 +29,20 @@ namespace DiskeyesCore
         }
     }
 
-    class Query
+    interface IQuery<T>
+    {
+        public ReadOnlyDictionary<T, string[]> GetQueryData();
+    }
+
+    /// <summary>
+    /// Parses a user input string into search categories and indices.
+    /// </summary>
+    class MovieQuery : IQuery<SearchCategory>
     {
         public readonly ReadOnlyDictionary<SearchCategory, string[]> QueryData;
         private static Vocabulary ActorsVocab = new Vocabulary("vocabulary_actors");
         private static Vocabulary GeneralVocab = new Vocabulary("vocabulary_general");
-        public Query(string text, Dictionary<SearchCategory, Func<string, string[]>> tokenizers = null, Func<string, Dictionary<SearchCategory, string>> customParser = null)
+        public MovieQuery(string text, Dictionary<SearchCategory, Func<string, string[]>> tokenizers = null, Func<string, Dictionary<SearchCategory, string>> customParser = null)
         {
             var parser = customParser is null ? DefaultParser : customParser;
             if (tokenizers is null)
@@ -124,6 +62,10 @@ namespace DiskeyesCore
             }
             AssignIndices(ref data);
             QueryData = new ReadOnlyDictionary<SearchCategory, string[]>(data);
+        }
+        public ReadOnlyDictionary<SearchCategory, string[]> GetQueryData()
+        {
+            return QueryData;
         }
         private static string[] SpaceTokenizer(string categoryText)
         {

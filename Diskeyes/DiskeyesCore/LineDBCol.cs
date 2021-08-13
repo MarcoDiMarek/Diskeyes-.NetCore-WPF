@@ -11,8 +11,9 @@ namespace DiskeyesCore
 {
     abstract class LineDBCol
     {
-        public virtual async Task<bool> AppendHot() { return false; }
-        public virtual async Task<bool> Search(string[] values, CancellationToken token, IProgress<SearchBatch> progress, int identifier) { return false; }
+        public abstract Task<bool> AppendHot();
+        public abstract Task<bool> Search(string[] values, CancellationToken token, IProgress<SearchBatch> progress, int identifier);
+        public abstract Task<bool> Initialize();
     }
     class LineDBCol<T> : LineDBCol
     {
@@ -56,7 +57,7 @@ namespace DiskeyesCore
             HotChanges = new Dictionary<int, string>();
         }
 
-        public async Task<bool> Initialize()
+        public override async Task<bool> Initialize()
         {
             try
             {
