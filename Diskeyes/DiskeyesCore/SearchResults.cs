@@ -4,23 +4,29 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DiskeyesCore
 {
     class SearchResults<T, K> where K : ISearchEntry<T>, new()
     {
         public delegate void ResultsOrderedHandler(KeyValuePair<int, K>[] results);
+        public delegate void ResultsSealedHandler(KeyValuePair<int, K>[] orderedResults);
         public event ResultsOrderedHandler ResultsOrdered;
-        public ReadOnlyDictionary<int, K> Results { get { return new ReadOnlyDictionary<int, K>(results); } }
+        public event ResultsSealedHandler ResultsSealed;
+        public ReadOnlyDictionary<int, K> Results { get { return finalResults; } }
+        public readonly int CompletionKey;
         private ConcurrentDictionary<int, K> results;
+        private ReadOnlyDictionary<int, K> finalResults;
         const float MaxCountThreshold = 1.5f;
         private int MaxCount;
         private int MaxFinalCount;
-        public SearchResults(int maxCount = int.MaxValue, int maxFinalCount = int.MaxValue)
+        public SearchResults(int maxCount = int.MaxValue / 2, int maxFinalCount = int.MaxValue - 1)
         {
             results = new ConcurrentDictionary<int, K>();
             MaxCount = maxCount;
-            MaxFinalCount = maxFinalCount;
+            MaxFinalCount = Math.Clamp(maxFinalCount, 1, int.MaxValue - 1);
+            CompletionKey = int.MaxValue;
         }
         public void Add(int index, T category, bool[] presence)
         {
@@ -34,7 +40,7 @@ namespace DiskeyesCore
                 entry = new K();
                 entry.Update(category, presence);
                 results.TryAdd(index, entry);
-                if(results.Count > MaxCount * MaxCountThreshold)
+                if (results.Count > MaxCount * MaxCountThreshold)
                 {
                     Trim(MaxCount);
                 }
@@ -50,16 +56,26 @@ namespace DiskeyesCore
                 Console.WriteLine("Trimmed size to " + results.Count.ToString());
             }
         }
-        public void Seal()
+        public async void Seal()
         {
-            lock (results) {
-                if (results.Count > MaxFinalCount)
-                {
-                    var bestResults = results.ToArray().OrderByDescending(x => x.Value.GetScore()).Take(MaxFinalCount);
-                    results = new ConcurrentDictionary<int, K>(bestResults);
-                    GC.Collect();
-                }
+            results.TryAdd(CompletionKey, new K());
+
+            K found;
+            while (!results.TryGetValue(CompletionKey, out found))
+            {
+                await Task.Delay(50);
             }
+            IEnumerable<KeyValuePair<int,K>> bestResults;
+            lock (results)
+            {
+                int toTake = Math.Min(MaxFinalCount, results.Count) - 1; // -1 to exclude the Completion Key
+                bestResults = results.ToArray().OrderByDescending(x => x.Value.GetScore()).Take(toTake);
+                results.Clear();
+            }
+            var dict = new Dictionary<int, K>(bestResults);
+            finalResults = new ReadOnlyDictionary<int, K>(dict);
+            ResultsSealed?.Invoke(bestResults.ToArray());
+            GC.Collect(2, GCCollectionMode.Optimized);
         }
     }
 }

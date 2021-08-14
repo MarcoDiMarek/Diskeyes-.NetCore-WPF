@@ -38,13 +38,13 @@ namespace Diskeyes
                 });
             });
         }
-        void PrintResults(SearchResults<SearchCategory, MovieSearchEntry> results)
+        void PrintResults(KeyValuePair<int, MovieSearchEntry>[] orderedResults)
         {
             Dispatcher.Invoke(() =>
              {
-                 UIInfoText.Text = "Here are top 10 matching lines sorted alphabetically.\n";
-                 int toTake = Math.Min(results.Results.Count, 10);
-                 foreach (var result in results.Results.Take(toTake))
+                 UIInfoText.Text = "Here are top 10 matching lines sorted by score.\n";
+                 int toTake = Math.Min(orderedResults.Length, 10);
+                 foreach (var result in orderedResults.Take(toTake))
                  {
                      var entry = result.Value;
                      UIInfoText.Text += string.Format("Line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",

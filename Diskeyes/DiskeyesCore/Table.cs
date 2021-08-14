@@ -19,7 +19,7 @@ namespace DiskeyesCore
         where T : Enum
         where K : ISearchEntry<T>, new()
     {
-        public delegate void SearchFinishedHandler(SearchResults<T, K> results);
+        public delegate void SearchFinishedHandler(KeyValuePair<int, K>[] orderedBestResults);
         public delegate void PartialResultsHandler(KeyValuePair<int, K>[] orderedBestResults);
         public delegate void TableInitializedHandler();
         public event SearchFinishedHandler SearchFinished;
@@ -74,6 +74,7 @@ namespace DiskeyesCore
                 await CancelSearch();
 
             results = new SearchResults<T, K>(resultsRAM, finalMaxCount);
+            results.ResultsSealed += OnResultsSealed;
             results.ResultsOrdered += OnPartialResultsSorted;
             cancellationTokenSource = new CancellationTokenSource();
             var token = cancellationTokenSource.Token;
@@ -95,14 +96,17 @@ namespace DiskeyesCore
             await Task.WhenAll(tasks);
             tasks.Clear();
             results.Seal();
-            SearchFinished?.Invoke(results);
-            Console.WriteLine("Sealed results");
+            Console.WriteLine("Sealing results");
             return true;
         }
 
         private void OnPartialResultsSorted(KeyValuePair<int, K>[] sorted)
         {
             PartialResultsSorted?.Invoke(sorted);
+        }
+        private void OnResultsSealed(KeyValuePair<int, K>[] sorted)
+        {
+            SearchFinished?.Invoke(sorted);
         }
         public async Task<bool> CancelSearch()
         {

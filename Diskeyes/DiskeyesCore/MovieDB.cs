@@ -10,7 +10,7 @@ namespace DiskeyesCore
 {
     class MovieDB
     {
-        public delegate void SearchFinishedHandler(SearchResults<SearchCategory, MovieSearchEntry> results);
+        public delegate void SearchFinishedHandler(KeyValuePair<int, MovieSearchEntry>[] results);
         public delegate void PartialResultsHandler(KeyValuePair<int, MovieSearchEntry>[] orderedBestResults);
         public delegate void ReadyStateHandler(bool ready);
         public event SearchFinishedHandler SearchFinished;
@@ -47,7 +47,7 @@ namespace DiskeyesCore
             };
             table = new Table<SearchCategory, MovieSearchEntry>(columns);
             table.PartialResultsSorted += OnResultsSorted;
-            table.SearchFinished += OnSearchDone;
+            table.SearchFinished += OnSearchFinished;
         }
         public async Task<bool> Initialize()
         {
@@ -67,7 +67,7 @@ namespace DiskeyesCore
             //Task.Run(() => titles.Retrieve(results.Select(x => x.Key).ToArray(), token, progress, (int)SearchCategory.title));
             PartialResultsSorted?.Invoke(results);
         }
-        private void OnSearchDone(SearchResults<SearchCategory, MovieSearchEntry> results)
+        private void OnSearchFinished(KeyValuePair<int, MovieSearchEntry>[] results)
         {
             SearchFinished?.Invoke(results);
         }
