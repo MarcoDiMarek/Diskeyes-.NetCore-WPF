@@ -1,5 +1,4 @@
 # Diskeyes
-!(https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/diskeyes%20git%20normal.png?raw=true)
 Diskeyes is a tool to manage personal movie collections.
 Optionally, Diskeyes should also facilitate exploring new movies based on what other people watch.
 It provides a fast search with low demands on memory.
