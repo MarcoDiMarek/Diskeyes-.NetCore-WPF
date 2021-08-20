@@ -1,9 +1,12 @@
 # Diskeyes
+![Diskeyes logo](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/diskeyes%20git%20normal.png?raw=true)
 Diskeyes is a tool to manage personal movie collections.
 Optionally, Diskeyes should also facilitate exploring new movies based on what other people watch.
 It provides a fast search with low demands on memory.
 
 ## Search
+![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/ui%20capture%20gif.gif?raw=true)
+
 So far, the search operates as if each part of the query was joined with an OR operator. NOT operator can be used too, but needs to be stated explicitly.
 For now, Diskeyes uses its own column-based database.
 The system is intended to keep the data human-readable, which determines how data is structured, written and read.
@@ -30,6 +33,8 @@ This way, partial results can be processed by the UI or another wrapper of the T
 A query example: **Raider actors(NOT Angelina Jolie)**
 
 ## UI - plans and mock-ups
+![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/screenshot%20design1.png?raw=true)
+![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/search%20movie%20screen.png?raw=true)
 No data processing on the UI thread.
 UI reacts to events and stays as separate from the core logic as possible.
 UI can call public methods of the database, but no workarounds should ever be made to allow direct access to *Table* or *Column* instances.
