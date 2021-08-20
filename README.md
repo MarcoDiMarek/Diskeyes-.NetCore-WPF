@@ -3,7 +3,7 @@ Diskeyes is a tool to manage personal movie collections.
 Optionally, Diskeyes should also facilitate exploring new movies based on what other people watch.
 It provides a fast search with low demands on memory.
 
-##Search
+## Search
 For now, Diskeyes uses its own column-based database.
 The system is intended to keep the data human-readable, which determines how data is structured, written and read.
 Each column object manages its respective *.LineDB* files and *.CHANGES* files.
@@ -22,14 +22,14 @@ At the *Task* level, the progress handler method passes retrieved batches to the
 When retrieval Tasks finish, partial results are updated with the retrieved data and an event is raised on the *Table* level.
 This way, partial results can be processed by the UI or another wrapper of the Table object.
 
-##Query
+## Query
 *Query* holds static references to Vocabulary objects.
 *Query* separates a text entry into search fields and assigns indices to be looked-up.
 
-##UI - plans and mock-ups
+## UI - plans and mock-ups
 
 
-##Guidelines
+## Guidelines
 The essential functionality should keep using a high level of abstraction, which can be modified/extended by other classes.
 Embrace Generics and LINQ, but **never use dynamic type**.
 Avoid Reflection and offload as much work as you can from the UI thread.
