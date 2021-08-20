@@ -4,6 +4,7 @@ Optionally, Diskeyes should also facilitate exploring new movies based on what o
 It provides a fast search with low demands on memory.
 
 ## Search
+So far, the search operates as if each part of the query was joined with an OR operator. NOT operator can be used too, but needs to be stated explicitly.
 For now, Diskeyes uses its own column-based database.
 The system is intended to keep the data human-readable, which determines how data is structured, written and read.
 Each column object manages its respective *.LineDB* files and *.CHANGES* files.
@@ -24,10 +25,14 @@ This way, partial results can be processed by the UI or another wrapper of the T
 
 ## Query
 *Query* holds static references to Vocabulary objects.
+*Query* can be passed query parsers and tokenizers for each possible search field. E.g., actors are tokenized by commas and a movie title by spaces.
 *Query* separates a text entry into search fields and assigns indices to be looked-up.
+A query example: **Raider actors(NOT Angelina Jolie)**
 
 ## UI - plans and mock-ups
-
+No data processing on the UI thread.
+UI reacts to events and stays as separate from the core logic as possible.
+UI can call public methods of the database, but no workarounds should ever be made to allow direct access to *Table* or *Column* instances.
 
 ## Guidelines
 The essential functionality should keep using a high level of abstraction, which can be modified/extended by other classes.
