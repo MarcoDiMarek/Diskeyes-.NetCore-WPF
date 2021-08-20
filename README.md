@@ -36,7 +36,6 @@ A query example: **Raider actors(NOT Angelina Jolie)**
 
 ## UI - plans and mock-ups
 ![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/screenshot%20design1.png?raw=true)
-![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/search%20movie%20screen.png?raw=true)
 No data processing on the UI thread.
 UI reacts to events and stays as separate from the core logic as possible.
 UI can call public methods of the database, but no workarounds should ever be made to allow direct access to *Table* or *Column* instances.
