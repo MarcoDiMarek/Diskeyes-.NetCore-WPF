@@ -25,6 +25,7 @@ Any new partial results are again passed to the data columns which continually r
 At the *Task* level, the progress handler method passes retrieved batches to the same SearchResults.
 When retrieval Tasks finish, partial results are updated with the retrieved data and an event is raised on the *Table* level.
 This way, partial results can be processed by the UI or another wrapper of the Table object.
+
 **CURRENTLY IMPLEMENTING**: Continuous retrieval of data for partial matches.
 
 ## Query
@@ -36,10 +37,11 @@ A query example: **Raider actors(NOT Angelina Jolie)**
 ## UI - plans and mock-ups
 ![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/screenshot%20design1.png?raw=true)
 ![UI capture gif](https://github.com/MarcoDiMarek/Diskeyes-.NetCore-WPF/blob/master/search%20movie%20screen.png?raw=true)
-**CURRENTLY IMPLEMENTING**: replacing UI code with standard, more maintainable WPF ContentPresenter, ControlTemplate, custom styles etc.
 No data processing on the UI thread.
 UI reacts to events and stays as separate from the core logic as possible.
 UI can call public methods of the database, but no workarounds should ever be made to allow direct access to *Table* or *Column* instances.
+
+**CURRENTLY IMPLEMENTING**: replacing UI code with standard, more maintainable WPF ContentPresenter, ControlTemplate, custom styles etc.
 
 ## Guidelines
 The essential functionality should keep using a high level of abstraction, which can be modified/extended by other classes.
