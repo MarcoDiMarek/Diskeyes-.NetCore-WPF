@@ -51,7 +51,6 @@ namespace DiskeyesCore
                 default: throw new ArgumentException();
             }
             recalculateScore = true;
-            //SetScore();
         }
         public override void Update(SearchCategory category, string text)
         {
@@ -70,7 +69,6 @@ namespace DiskeyesCore
                 default: throw new ArgumentException();
             }
             recalculateScore = true;
-            //SetScore();
         }
     }
 }

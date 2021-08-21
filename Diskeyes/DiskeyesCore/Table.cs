@@ -26,13 +26,13 @@ namespace DiskeyesCore
         public event PartialResultsHandler PartialResultsSorted;
         public event TableInitializedHandler TableInitialized;
         private HashSet<int> available;
-        private Dictionary<T, Column> fields;
+        private Dictionary<T, Column> Columns;
         private CancellationTokenSource cancellationTokenSource;
         private List<Task> tasks;
         private SearchResults<T, K> results;
         public Table(Dictionary<T, Column> columns, bool initializeNow = false, bool blocking = false)
         {
-            fields = columns;
+            Columns = columns;
             if (initializeNow)
             {
                 if (blocking)
@@ -50,7 +50,7 @@ namespace DiskeyesCore
         }
         public async Task<bool> Initialize()
         {
-            var initializations = from column in fields
+            var initializations = from column in Columns
                                   select column.Value.Initialize();
 
             await Task.WhenAll(initializations.ToArray());
@@ -68,7 +68,7 @@ namespace DiskeyesCore
             }
             Console.WriteLine(string.Format("{0} found {1} matches", category, additions.BoolValues.Count));
         }
-        public async Task<bool> Search(IQuery<T> query, int resultsRAM = 5000, int finalMaxCount = 100)
+        public async Task<bool> Search(IQuery<T> query, int resultsRAM = 2000, int finalMaxCount = 100)
         {
             if (tasks != null && tasks.Count > 0)
                 await CancelSearch();
@@ -82,11 +82,11 @@ namespace DiskeyesCore
             tasks = new List<Task>();
 
             var queryData = query.GetQueryData();
-            foreach (var searchField in queryData.Keys.Intersect(fields.Keys))
+            foreach (var searchField in queryData.Keys.Intersect(Columns.Keys))
             {
                 T field = searchField;
                 int identifier = Unsafe.As<T, int>(ref field);
-                var column = fields[searchField];
+                var column = Columns[searchField];
                 var toSearch = queryData[searchField].values;
                 var presence = queryData[searchField].desiredPresence;
                 var task = column.Search(toSearch, presence, token, progress, identifier);
@@ -110,14 +110,14 @@ namespace DiskeyesCore
         }
         public async Task<bool> CancelSearch()
         {
-            try
+            if (cancellationTokenSource != null)
             {
                 cancellationTokenSource.Cancel();
                 await Task.WhenAll(tasks);
                 tasks.Clear();
                 return true;
             }
-            catch
+            else
             {
                 // cancellation token source not yet defined
                 // OR a list of tasks is null
@@ -129,7 +129,7 @@ namespace DiskeyesCore
         {
             try
             {
-                var tasks = fields.Values.Select(x => x.AppendHot());
+                var tasks = Columns.Select(x => x.Value.AppendHot());
                 foreach (var task in tasks)
                     task.Start();
                 await Task.WhenAll(tasks);

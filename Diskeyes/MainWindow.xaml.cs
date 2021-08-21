@@ -35,6 +35,7 @@ namespace Diskeyes
                 {
                     UIInfoText.Text = "Ready";
                     BusyBar.IsIndeterminate = false;
+                    SearchBox.IsEnabled = true;
                 });
             });
         }
@@ -42,16 +43,22 @@ namespace Diskeyes
         {
             Dispatcher.Invoke(() =>
              {
-                 UIInfoText.Text = "Here are top 10 matching lines sorted by score.\n";
-                 int toTake = Math.Min(orderedResults.Length, 10);
-                 foreach (var result in orderedResults.Take(toTake))
+                 if (orderedResults.Length == 0)
                  {
-                     var entry = result.Value;
-                     UIInfoText.Text += string.Format("Line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",
-                         result.Key, result.Value.Score, string.Join(",", entry.actors.Select(x => x.ToString())), string.Join(",", entry.titleIndices.Select(x => x.ToString())), string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
-                     UIInfoText.Text += "\n";
+                     UIInfoText.Text = "No matches.";
                  }
-                 //UIInfoText.Text = string.Join(",", results.Results.Select(x => x.Key.ToString()));
+                 else
+                 {
+                     UIInfoText.Text = "Here are top 10 matching lines sorted by score.\n";
+                     int toTake = Math.Min(orderedResults.Length, 10);
+                     foreach (var result in orderedResults.Take(toTake))
+                     {
+                         var entry = result.Value;
+                         UIInfoText.Text += string.Format("File line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",
+                             result.Key + 2, result.Value.Score, string.Join(",", entry.actors.Select(x => x.ToString())), string.Join(",", entry.titleIndices.Select(x => x.ToString())), string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
+                         UIInfoText.Text += "\n";
+                     }
+                 }
                  BusyBar.IsIndeterminate = false;
              });
         }
@@ -60,44 +67,99 @@ namespace Diskeyes
         {
             Dispatcher.Invoke(() =>
             {
-                UIInfoText.Text = "Partial results return these lines: " + string.Join(",", results.Take(10).Select(x => x.Key.ToString()));
+                UIInfoText.Text = "PARTIAL TOP 10 RESULTS FROM 2000 MATCHES \n\n";
+                int toTake = Math.Min(results.Length, 10);
+                foreach (var result in results.Take(toTake))
+                {
+                    var entry = result.Value;
+                    UIInfoText.Text += string.Format("File line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",
+                        result.Key + 2, result.Value.Score, string.Join(",", entry.actors.Select(x => x.ToString())), string.Join(",", entry.titleIndices.Select(x => x.ToString())), string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
+                    UIInfoText.Text += "\n";
+                }
             });
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            string previousText = SearchBox.Text;
-            UIInfoText.Text = previousText;
-
-            if (previousText != string.Empty)
+            var previousText = SearchBox.Text;
+            if (SearchBox.Text != string.Empty)
             {
-                BusyBar.IsIndeterminate = true;
                 Task.Run(async () =>
                 {
-                    await Task.Delay(1000);
+                    await Task.Delay(100);
+                    Dispatcher.Invoke(() =>
+                    {
+                        previousText = SearchBox.Text;
+                    });
+                    await db.CancelSearch();
+                    await Task.Delay(200);
                     string newText = "";
                     Dispatcher.Invoke(() =>
                     {
                         newText = SearchBox.Text;
                     });
-                    if (newText == previousText)
+
+                    if (previousText != newText)
+                        return;
+
+                    var query = new MovieQuery(newText);
+
+                    Dispatcher.Invoke(() =>
                     {
-                        var query = new MovieQuery(newText);
-                        Dispatcher.Invoke(() =>
+                        BusyBar.IsIndeterminate = true;
+                        UIInfoText.Text = "Searching \n";
+                        foreach (var searchCategory in query.QueryData)
                         {
-                            if (query.QueryData.ContainsKey(SearchCategory.title))
-                            {
-                                UIInfoText.Text = "Searching titles " + string.Join(" ", query.QueryData[SearchCategory.title].values);
-                            }
-                            else if (query.QueryData.ContainsKey(SearchCategory.actors))
-                            {
-                                UIInfoText.Text = "Searching actors " + string.Join(" ", query.QueryData[SearchCategory.actors].values);
-                            }
-                        });
-                        await db.Search(query);
-                    }
+                            UIInfoText.Text += string.Format("{0} : [{1}]\n",
+                                               searchCategory.Key.ToString(),
+                                               string.Join(",", searchCategory.Value.values));
+                        }
+                    });
+
+                    await db.Search(query);
                 });
             }
+            else
+            {
+                Task.Run(async () =>
+                {
+                    await db.CancelSearch();
+                    Dispatcher.Invoke(() => { UIInfoText.Text = "Cancelled"; });
+                });
+
+            }
+        }
+
+        private void UITutorial_Loaded(object sender, RoutedEventArgs e)
+        {
+            var messages = new List<(string, int)>()
+            {
+                ("Titles are searched without parantheses and commas.", 4),
+                ("Try Lara Croft", 2),
+                ("Try actors(NOT Angelina Jolie) Tomb Raider", 4),
+                ("Try pirates actors(Johny Depp)", 4),
+                ("Try Amélie actors(Audrey Tautou)", 4),
+                ("Try Tomb Raider actors(Angelina Jolie)", 4),
+                ("Try hakunamatata", 4),
+                ("Feel free to update the query at any time", 4),
+            };
+
+            Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                while (true)
+                {
+                    foreach (var (message, duration) in messages)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            UITutorial.Text = message;
+                        });
+                        await Task.Delay(duration * 1000);
+                    }
+                }
+            });
+
         }
     }
 }

@@ -25,15 +25,14 @@ namespace DiskeyesCore
         public const string Format = ".LineDB";
         public const string FormatChanges = ".CHANGES";
         public const string TempMarker = ".TEMP";
-        public int EntriesCount { get => entriesCount; }
+        public int EntriesCount { get; private set; }
         public int AvailableCount { get => AvailableSlots.Count; }
-        public int ChangesCount { get => changesCount; }
+        public int ChangesCount { get; private set; }
         public string Name { get => name; }
         public int NextID { get => Math.Max(lastID, Utilities.MaxKey(ref HotChanges)) + 1; }
         protected int bulkInRAM;
-        protected int entriesCount;
-        protected int changesCount;
         protected int lastID = -1;
+        protected string AvailabilityMarker;
         protected string name;
         protected Dictionary<int, string> SavedChanges;
         protected Dictionary<int, string> HotChanges;
@@ -42,7 +41,9 @@ namespace DiskeyesCore
         protected Func<string, T> DeserializerLambda;
         protected Func<T, string> SerializerLambda;
         protected Encoding FileEncoding;
-        protected string AvailabilityMarker;
+        protected RetrievalQueue<T> retrievalQueue;
+        protected CancellationTokenSource retrievalToken;
+
         #endregion
         public Column(string name, Encoding encoding, Func<T, string> serializer, Func<string, T> deserializer, int inRAMsize = 300, string availabilityMarker = "")
         {
@@ -55,6 +56,7 @@ namespace DiskeyesCore
             AvailableSlots = new CollectionCap<HashSet<int>, int>(AvailableSlotsCap, new HashSet<int>());
             SavedChanges = new Dictionary<int, string>();
             HotChanges = new Dictionary<int, string>();
+            retrievalQueue = new RetrievalQueue<T>();
         }
 
         public override async Task<bool> Initialize()
@@ -87,12 +89,12 @@ namespace DiskeyesCore
                 using (var fp = new StreamReader(File.Open(DBdir + name + Format, FileMode.Open, FileAccess.Read), FileEncoding))
                 {
                     var info = MetaLine(fp.ReadLine());
-                    entriesCount = int.Parse(info["entries"]);
+                    EntriesCount = int.Parse(info["entries"]);
                 }
             }
             catch
             {
-                entriesCount = 0;
+                EntriesCount = 0;
                 using (var fp = new StreamWriter(File.Open(DBdir + name + Format, FileMode.Create, FileAccess.Write)))
                 {
                     fp.WriteLine(String.Format("{0},", EntriesCount));
@@ -110,12 +112,12 @@ namespace DiskeyesCore
                 using (var fp = new StreamReader(File.Open(DBdir + name + FormatChanges, FileMode.Open, FileAccess.Read), FileEncoding))
                 {
                     var info = MetaLine(fp.ReadLine());
-                    changesCount = int.Parse(info["entries"]);
+                    ChangesCount = int.Parse(info["entries"]);
                 }
             }
             catch
             {
-                changesCount = 0;
+                ChangesCount = 0;
                 File.Create(DBdir + name + FormatChanges, 4096, FileOptions.SequentialScan).Close();
                 using (var fp = new StreamWriter(File.Open(DBdir + name + FormatChanges, FileMode.Create, FileAccess.Write)))
                 {
@@ -156,8 +158,8 @@ namespace DiskeyesCore
         /// </summary>
         protected virtual void Scan()
         {
-            entriesCount = 0;
-            changesCount = 0;
+            EntriesCount = 0;
+            ChangesCount = 0;
             AvailableSlots.Clear();
             SavedChanges.Clear();
 
@@ -168,7 +170,7 @@ namespace DiskeyesCore
                 // Find empty slots in saved data file
                 lastID = index; // simple assignment is possible, because retrieved indices are always in ascending order here
                 if (data == AvailabilityMarker) AvailableSlots.Add(index);
-                entriesCount += 1;
+                EntriesCount += 1;
             }
             foreach (var (index, data) in ReadChanges())
             {
@@ -177,7 +179,7 @@ namespace DiskeyesCore
                 SavedChanges[index] = data;
                 if (data == AvailabilityMarker) AvailableSlots.Add(index);
                 else if (AvailableSlots.Contains(index)) AvailableSlots.Remove(index);
-                changesCount += 1;
+                ChangesCount += 1;
             }
             foreach (KeyValuePair<int, string> change in HotChanges)
             {
@@ -215,23 +217,7 @@ namespace DiskeyesCore
         /// </summary>
         /// <typeparam name="T">Data type of converted line data.</typeparam>
         /// <param name="toSkip">Lines to be skipped after the meta data line.</param>
-        /// <returns>A lazy-loaded batch (list) of converted data.</returns>
-        protected IEnumerable<List<T>> Batches(int toSkip = 0)
-        {
-            int batchSize = BulkInRAM;
-            var batch = new List<T>(batchSize);
-            foreach (var (index, data) in Read().Skip(toSkip))
-            {
-                batch.Add(DeserializerLambda(data));
-                if (batch.Count >= BulkInRAM)
-                {
-                    yield return batch;
-                    batch = new List<T>(batchSize);
-                }
-            }
-            batch.TrimExcess();
-            if (batch.Count > 0) yield return batch;
-        }
+        /// <returns>Lazy-loaded batches of converted data.</returns>
 
         protected IEnumerable<List<(int, string)>> ReadBatches()
         {
@@ -257,7 +243,7 @@ namespace DiskeyesCore
                     batch = new List<(int, string)>(batchSize);
                 }
             }
-            foreach (var (index, data) in mergedChanges.Where(x => x.Key >= entriesCount))
+            foreach (var (index, data) in mergedChanges.Where(x => x.Key >= EntriesCount))
             {
                 batch.Add((index, data));
                 if (batch.Count >= BulkInRAM)
@@ -296,7 +282,7 @@ namespace DiskeyesCore
 
         protected Dictionary<int, string> MergedChanges()
         {
-            return Utilities.MergeDictionaries<int, string>(SavedChanges, HotChanges);
+            return Utilities.MergeDictionaries(SavedChanges, HotChanges);
         }
         /// <summary>
         /// Searches for the presence or absence of the provided values asynchronously and passes matches to the Progress Reporter.
@@ -318,7 +304,7 @@ namespace DiskeyesCore
                     {
                         // initialize the vector with opposite values
                         // seeked -> unfound, not seeked -> found
-                        var vector = desiredPresence.Select(x=>!x).ToArray();
+                        var vector = desiredPresence.Select(x => !x).ToArray();
                         for (int i = 0; i < values.Length; i++)
                         {
                             if (entry.Contains(values[i]))
@@ -326,7 +312,7 @@ namespace DiskeyesCore
                                 vector[i] = desiredPresence[i];
                             }
                         }
-                        if (vector.Any(x=>x))
+                        if (vector.Any(x => x))
                         {
                             matches.Add((index, vector));
                         }
@@ -341,32 +327,72 @@ namespace DiskeyesCore
             return true;
         }
 
-        public async Task<bool> Retrieve(int[] lines, CancellationToken token, IProgress<SearchBatch<T>> progress, int identifier = 0)
+        public async Task<bool> Retrieve(IProgress<SearchBatch<T>> progress, IEnumerable<int> lines, int categoryIdentifier)
+        {
+            retrievalQueue.Add(progress, lines);
+            if (retrievalToken == null)
+            {
+                retrievalToken = new CancellationTokenSource();
+                await Task.Run(async () =>
+                {
+                    await Retrieve(retrievalQueue, retrievalToken.Token, categoryIdentifier);
+                });
+                retrievalToken = null;
+            }
+            else
+            {
+                await Task.Run(() =>
+                {
+                    while (retrievalToken != null) ;
+                });
+            }
+            return true;
+        }
+
+        protected async Task<bool> Retrieve(RetrievalQueue<T> queue, CancellationToken token, int categoryIdentifier)
         {
             await Task.Run(() =>
             {
-                int highestIndex = lines.Max();
-                var seeked = lines.ToHashSet();
-                foreach (var batch in Access())
+                while (!queue.IsEmpty)
                 {
-                    if (batch.First().Item1 > highestIndex)
-                        break;
-
-                    var matches = from entry in batch
-                                  where seeked.Contains(entry.Item1)
-                                  select entry;
-
-                    var data = matches.ToList().AsReadOnly();
-
-                    if (data.Count > 0)
+                    int lastIndex = 0;
+                    foreach (var batch in ReadBatches())
                     {
-                        progress.Report(new SearchBatch<T>(data, identifier));
+                        var collected = new Dictionary<IProgress<SearchBatch<T>>, List<ValueEntry<T>>>(BulkInRAM);
+
+                        foreach (var (index, value) in batch)
+                        {
+                            var progresses = queue.Seekers(index);
+                            if (progresses != null)
+                            {
+                                var entry = new ValueEntry<T>(index, DeserializerLambda(value));
+                                foreach (var progress in progresses)
+                                {
+                                    if (!collected.TryAdd(progress, new List<ValueEntry<T>> { entry }))
+                                    {
+                                        collected[progress].Add(entry);
+                                    }
+                                }
+                            }
+                            lastIndex = index;
+                        }
+
+                        if (collected.Count > 0)
+                        {
+                            foreach (var (progress, entries) in collected)
+                            {
+                                var data = entries.Select(x => (x.Index, x.Value)).ToList().AsReadOnly();
+                                progress.Report(new SearchBatch<T>(data, categoryIdentifier));
+                            }
+                        }
+                        if (token.IsCancellationRequested) return;
+                        queue.RemoveUnreachable(lastIndex);
                     }
-                    if (token.IsCancellationRequested) return;
                 }
             });
             return true;
         }
+
 
 
         public virtual void Change(int index, string value)
@@ -461,7 +487,7 @@ namespace DiskeyesCore
             var changesSnapshot = new Dictionary<int, string>(HotChanges); // a deep copy
             var appendedContent = allChanges.Where(x => x.Key > lastID).Select(x => x.Value);
             IEnumerable<string> allContent = OldOrChange(Read(), allChanges).Concat(appendedContent);
-            int newCount = entriesCount + appendedContent.Count();
+            int newCount = EntriesCount + appendedContent.Count();
             string finalFile = DBdir + name + Format;
             string tempFile = finalFile + TempMarker;
             string changesFile = DBdir + name + FormatChanges;
@@ -491,7 +517,7 @@ namespace DiskeyesCore
         }
         public void WriteChanges()
         {
-            long changesFileSize = new System.IO.FileInfo(DBdir + name + Format).Length;
+            long changesFileSize = new FileInfo(DBdir + name + Format).Length;
             if (changesFileSize > FileAppendTriggerSize || HotChanges.Count < 100)
             {
                 AppendHot().RunSynchronously();

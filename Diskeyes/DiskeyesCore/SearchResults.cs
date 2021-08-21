@@ -14,10 +14,9 @@ namespace DiskeyesCore
         public delegate void ResultsSealedHandler(KeyValuePair<int, K>[] orderedResults);
         public event ResultsOrderedHandler ResultsOrdered;
         public event ResultsSealedHandler ResultsSealed;
-        public ReadOnlyDictionary<int, K> Results { get { return finalResults; } }
+        public ReadOnlyDictionary<int, K> Results { get; private set; }
         public readonly int CompletionKey;
         private ConcurrentDictionary<int, K> results;
-        private ReadOnlyDictionary<int, K> finalResults;
         const float MaxCountThreshold = 1.5f;
         private int MaxCount;
         private int MaxFinalCount;
@@ -27,6 +26,19 @@ namespace DiskeyesCore
             MaxCount = maxCount;
             MaxFinalCount = Math.Clamp(maxFinalCount, 1, int.MaxValue - 1);
             CompletionKey = int.MaxValue;
+        }
+        public Dictionary<int, K> Peek(IEnumerable<int> indices)
+        {
+            var output = new Dictionary<int, K>();
+            foreach(var index in indices)
+            {
+                K value;
+                if (results.TryGetValue(index, out value))
+                {
+                    output[index] = value;
+                }
+            }
+            return output;
         }
         public void Add(int index, T category, bool[] presence)
         {
@@ -73,9 +85,8 @@ namespace DiskeyesCore
                 results.Clear();
             }
             var dict = new Dictionary<int, K>(bestResults);
-            finalResults = new ReadOnlyDictionary<int, K>(dict);
+            Results = new ReadOnlyDictionary<int, K>(dict);
             ResultsSealed?.Invoke(bestResults.ToArray());
-            GC.Collect(2, GCCollectionMode.Optimized);
         }
     }
 }

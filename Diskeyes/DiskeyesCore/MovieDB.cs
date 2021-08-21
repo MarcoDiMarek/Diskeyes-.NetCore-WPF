@@ -55,16 +55,14 @@ namespace DiskeyesCore
             ReadyStateChanged?.Invoke(true);
             return true;
         }
-        private void OnTitlesBatch(SearchBatch<string> titles)
-        {
 
-        }
         private void OnResultsSorted(KeyValuePair<int, MovieSearchEntry>[] results)
         {
             // A temporary function, needs to be replaced by a generic one which retrieves data values for collected indices
             //var progress = new Progress<SearchBatch<string>>(OnTitlesBatch);
             //var token = new CancellationTokenSource().Token;
             //Task.Run(() => titles.Retrieve(results.Select(x => x.Key).ToArray(), token, progress, (int)SearchCategory.title));
+            
             PartialResultsSorted?.Invoke(results);
         }
         private void OnSearchFinished(KeyValuePair<int, MovieSearchEntry>[] results)

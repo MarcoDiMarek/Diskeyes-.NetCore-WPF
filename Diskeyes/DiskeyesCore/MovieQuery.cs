@@ -28,6 +28,7 @@ namespace DiskeyesCore
             BoolValues = boolValues;
         }
     }
+
     struct SearchBatch<T>
     {
         public readonly ReadOnlyCollection<(int, T)> Values;
@@ -70,7 +71,7 @@ namespace DiskeyesCore
                 tokenizers = new Dictionary<SearchCategory, Func<string, (string[], bool[])>>()
                 {
                     { SearchCategory.actors, CommaTokenizer },
-                    { SearchCategory.description, CommaTokenizer},
+                    { SearchCategory.description, SpaceTokenizer},
                     { SearchCategory.title, SpaceTokenizer },
                 };
             }

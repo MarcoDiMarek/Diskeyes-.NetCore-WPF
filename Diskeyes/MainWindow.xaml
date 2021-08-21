@@ -6,15 +6,34 @@
         xmlns:local="clr-namespace:Diskeyes"
         mc:Ignorable="d"
         Background="#171717"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="550" Width="800">
+
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="3*"></RowDefinition>
+            <RowDefinition Height="2*"></RowDefinition>
+            <RowDefinition Height="2*"></RowDefinition>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <!--<ColumnDefinition Width="155*"/>-->
+            <ColumnDefinition Width="1*"></ColumnDefinition>
+            <ColumnDefinition Width="10*"></ColumnDefinition>
+            <ColumnDefinition Width="1*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
-        <StackPanel>
-            <TextBlock Name="UIInfoText" Margin="10" HorizontalAlignment="Center" Foreground="White" Text="Initializing" Grid.ColumnSpan="3" TextWrapping="Wrap"></TextBlock>
-            <ProgressBar Name="BusyBar" IsIndeterminate="True" Foreground="Yellow"/>
-            <TextBox Name="SearchBox" HorizontalAlignment="Left" Margin="51,143,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="681" TextChanged="SearchBox_TextChanged" Grid.ColumnSpan="3"/>
+
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                   Name="UIInfoText" Margin="10" HorizontalAlignment="Center" FontSize="15"
+                   Foreground="White" Text="Initializing"
+                   TextWrapping="Wrap"></TextBlock>
+
+        <StackPanel Grid.Row="1" Grid.Column="1">
+            <TextBlock Grid.Row="1" Grid.Column="1"
+            Name="UITutorial" HorizontalAlignment="Center" Text="Hello." TextWrapping="Wrap"
+                       Foreground="Azure" FontSize="25" Loaded="UITutorial_Loaded"/>
+            <TextBox Name="SearchBox" IsEnabled="false"
+                     FontSize="20" Text="" TextWrapping="Wrap" VerticalAlignment="Top" 
+                     TextChanged="SearchBox_TextChanged" Grid.ColumnSpan="3"/>
+            <ProgressBar Name="BusyBar" IsIndeterminate="True" Foreground="Yellow" Background="#171717"/>
         </StackPanel>
+        
     </Grid>
 </Window>
