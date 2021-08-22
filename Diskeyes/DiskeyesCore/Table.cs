@@ -29,7 +29,7 @@ namespace DiskeyesCore
         private Dictionary<T, Column> Columns;
         private CancellationTokenSource cancellationTokenSource;
         private List<Task> tasks;
-        private SearchResults<T, K> results;
+        public SearchResults<T, K> results;
         public Table(Dictionary<T, Column> columns, bool initializeNow = false, bool blocking = false)
         {
             Columns = columns;

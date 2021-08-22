@@ -41,8 +41,8 @@ namespace DiskeyesCore
         protected Func<string, T> DeserializerLambda;
         protected Func<T, string> SerializerLambda;
         protected Encoding FileEncoding;
-        protected RetrievalQueue<T> retrievalQueue;
-        protected CancellationTokenSource retrievalToken;
+        //protected RetrievalQueue<T> retrievalQueue;
+        //protected CancellationTokenSource retrievalToken;
 
         #endregion
         public Column(string name, Encoding encoding, Func<T, string> serializer, Func<string, T> deserializer, int inRAMsize = 300, string availabilityMarker = "")
@@ -56,7 +56,7 @@ namespace DiskeyesCore
             AvailableSlots = new CollectionCap<HashSet<int>, int>(AvailableSlotsCap, new HashSet<int>());
             SavedChanges = new Dictionary<int, string>();
             HotChanges = new Dictionary<int, string>();
-            retrievalQueue = new RetrievalQueue<T>();
+            //retrievalQueue = new RetrievalQueue<T>();
         }
 
         public override async Task<bool> Initialize()
@@ -197,7 +197,7 @@ namespace DiskeyesCore
         /// <returns>A lazy-loaded list of indices paired with converted data.</returns>
         protected IEnumerable<List<(int, T, string)>> IndexedBatches(int toSkip = 0)
         {
-            int batchSize = (int)BulkInRAM;
+            int batchSize = BulkInRAM;
             var batch = new List<(int, T, string)>(batchSize);
             foreach (var (index, data) in Read().Skip(toSkip))
             {
@@ -327,71 +327,92 @@ namespace DiskeyesCore
             return true;
         }
 
-        public async Task<bool> Retrieve(IProgress<SearchBatch<T>> progress, IEnumerable<int> lines, int categoryIdentifier)
+        public Task<List<(int, T)>> Retrieve(HashSet<int> toRetrieve, CancellationToken token, IProgress<SearchBatch<T>> progress, int categoryIdentifier)
         {
-            retrievalQueue.Add(progress, lines);
-            if (retrievalToken == null)
-            {
-                retrievalToken = new CancellationTokenSource();
-                await Task.Run(async () =>
-                {
-                    await Retrieve(retrievalQueue, retrievalToken.Token, categoryIdentifier);
-                });
-                retrievalToken = null;
-            }
-            else
-            {
-                await Task.Run(() =>
-                {
-                    while (retrievalToken != null) ;
-                });
-            }
-            return true;
-        }
+            var collected = new List<(int, T)>();
 
-        protected async Task<bool> Retrieve(RetrievalQueue<T> queue, CancellationToken token, int categoryIdentifier)
-        {
-            await Task.Run(() =>
+            foreach (var batch in ReadBatches())
             {
-                while (!queue.IsEmpty)
+                foreach (var (index, value) in batch)
                 {
-                    int lastIndex = 0;
-                    foreach (var batch in ReadBatches())
+                    if (toRetrieve.Contains(index))
                     {
-                        var collected = new Dictionary<IProgress<SearchBatch<T>>, List<ValueEntry<T>>>(BulkInRAM);
-
-                        foreach (var (index, value) in batch)
-                        {
-                            var progresses = queue.Seekers(index);
-                            if (progresses != null)
-                            {
-                                var entry = new ValueEntry<T>(index, DeserializerLambda(value));
-                                foreach (var progress in progresses)
-                                {
-                                    if (!collected.TryAdd(progress, new List<ValueEntry<T>> { entry }))
-                                    {
-                                        collected[progress].Add(entry);
-                                    }
-                                }
-                            }
-                            lastIndex = index;
-                        }
-
-                        if (collected.Count > 0)
-                        {
-                            foreach (var (progress, entries) in collected)
-                            {
-                                var data = entries.Select(x => (x.Index, x.Value)).ToList().AsReadOnly();
-                                progress.Report(new SearchBatch<T>(data, categoryIdentifier));
-                            }
-                        }
-                        if (token.IsCancellationRequested) return;
-                        queue.RemoveUnreachable(lastIndex);
+                        collected.Add((index, DeserializerLambda(value)));
                     }
                 }
-            });
-            return true;
+                if (token.IsCancellationRequested)
+                    return Task.FromResult(collected);
+            }
+            if (collected.Count > 0)
+                progress.Report(new SearchBatch<T>(collected.AsReadOnly(), categoryIdentifier));
+            
+            return Task.FromResult(collected);
         }
+
+        //public async Task<bool> Retrieve(IProgress<SearchBatch<T>> progress, IEnumerable<int> lines, int categoryIdentifier)
+        //{
+        //    retrievalQueue.Add(progress, lines);
+        //    if (retrievalToken == null && lines.Count() > 0)
+        //    {
+        //        retrievalToken = new CancellationTokenSource();
+        //        var token = retrievalToken.Token;
+        //        await Task.Run(async () =>
+        //        {
+        //            await Retrieve(retrievalQueue, token, categoryIdentifier);
+        //        });
+        //        retrievalToken = null;
+        //    }
+        //    else
+        //    {
+        //        await Task.Run(() =>
+        //        {
+        //            while (retrievalToken != null) ;
+        //        });
+        //    }
+        //    return true;
+        //}
+
+        //protected Task Retrieve(RetrievalQueue<T> queue, CancellationToken token, int categoryIdentifier)
+        //{
+        //    while (!queue.IsEmpty)
+        //    {
+        //        int lastIndex = 0;
+        //        foreach (var batch in ReadBatches())
+        //        {
+        //            var collected = new Dictionary<IProgress<SearchBatch<T>>, List<ValueEntry<T>>>(BulkInRAM);
+
+        //            foreach (var (index, value) in batch)
+        //            {
+        //                var progresses = queue.Seekers(index);
+        //                if (progresses != null)
+        //                {
+        //                    var entry = new ValueEntry<T>(index, DeserializerLambda(value));
+        //                    foreach (var progress in progresses)
+        //                    {
+        //                        if (!collected.TryAdd(progress, new List<ValueEntry<T>> { entry }))
+        //                        {
+        //                            collected[progress].Add(entry);
+        //                        }
+        //                    }
+        //                }
+        //                lastIndex = index;
+        //            }
+
+        //            if (collected.Count > 0)
+        //            {
+        //                foreach (var (progress, entries) in collected)
+        //                {
+        //                    var data = entries.Select(x => (x.Index, x.Value)).ToList().AsReadOnly();
+        //                    progress.Report(new SearchBatch<T>(data, categoryIdentifier));
+        //                }
+        //            }
+        //            if (token.IsCancellationRequested)
+        //                return Task.FromResult(false);
+        //            queue.RemoveUnreachable(lastIndex);
+        //        }
+        //    }
+        //    return Task.FromResult(true);
+        //}
 
 
 

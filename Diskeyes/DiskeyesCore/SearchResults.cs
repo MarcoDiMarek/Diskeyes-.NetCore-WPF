@@ -20,12 +20,14 @@ namespace DiskeyesCore
         const float MaxCountThreshold = 1.5f;
         private int MaxCount;
         private int MaxFinalCount;
-        public SearchResults(int maxCount = int.MaxValue / 2, int maxFinalCount = int.MaxValue - 1)
+        private int PartialCount;
+        public SearchResults(int partialCount = 10, int maxCount = int.MaxValue / 2, int maxFinalCount = int.MaxValue - 1)
         {
             results = new ConcurrentDictionary<int, K>();
             MaxCount = maxCount;
             MaxFinalCount = Math.Clamp(maxFinalCount, 1, int.MaxValue - 1);
             CompletionKey = int.MaxValue;
+            PartialCount = Math.Abs(partialCount);
         }
         public Dictionary<int, K> Peek(IEnumerable<int> indices)
         {
@@ -58,13 +60,35 @@ namespace DiskeyesCore
                 }
             }
         }
+
+        public void Add(int index, T category, string value)
+        {
+            K entry;
+            if (results.TryGetValue(index, out entry))
+            {
+                entry.Update(category, value);
+            }
+            else
+            {
+                entry = new K();
+                entry.Update(category, value);
+                results.TryAdd(index, entry);
+                if (results.Count > MaxCount * MaxCountThreshold)
+                {
+                    Trim(MaxCount);
+                }
+            }
+        }
+
         public void Trim(int max)
         {
             if (results.Count > max)
             {
                 var bestResults = results.ToArray().OrderByDescending(x => x.Value.GetScore()).Take(max).ToArray();
                 results = new ConcurrentDictionary<int, K>(bestResults);
-                ResultsOrdered?.Invoke(bestResults);
+                int partialToTake = Math.Min(bestResults.Length, PartialCount);
+                var partialResults = bestResults.Take(partialToTake);
+                ResultsOrdered?.Invoke(partialResults.ToArray());
                 Console.WriteLine("Trimmed size to " + results.Count.ToString());
             }
         }

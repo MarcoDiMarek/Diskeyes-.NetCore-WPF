@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Linq;
 
@@ -17,14 +18,14 @@ namespace DiskeyesCore
     }
     class RetrievalQueue<T>
     {
-        private Dictionary<int, HashSet<IProgress<SearchBatch<T>>>> ToCollect;
+        private ConcurrentDictionary<int, HashSet<IProgress<SearchBatch<T>>>> ToCollect;
         public bool IsEmpty
         {
-            get { return ToCollect.Count > 0; }
+            get { return ToCollect.Count == 0; }
         }
         public RetrievalQueue()
         {
-            ToCollect = new Dictionary<int, HashSet<IProgress<SearchBatch<T>>>>();
+            ToCollect = new ConcurrentDictionary<int, HashSet<IProgress<SearchBatch<T>>>>();
         }
 
         public void Add(IProgress<SearchBatch<T>> progress, IEnumerable<int> linesToRetrieve)
@@ -44,7 +45,8 @@ namespace DiskeyesCore
             if (ToCollect.ContainsKey(index))
             {
                 var collection = ToCollect[index];
-                ToCollect.Remove(index);
+                HashSet<IProgress<SearchBatch<T>>> returned;
+                ToCollect.TryRemove(index, out returned);
                 return collection;
             }
 
@@ -59,7 +61,8 @@ namespace DiskeyesCore
                               select index;
             foreach (int index in unreachable.ToArray())
             {
-                ToCollect.Remove(index);
+                HashSet<IProgress<SearchBatch<T>>> returned;
+                ToCollect.TryRemove(index, out returned);
             }
         }
     }

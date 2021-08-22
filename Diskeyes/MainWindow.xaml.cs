@@ -54,8 +54,13 @@ namespace Diskeyes
                      foreach (var result in orderedResults.Take(toTake))
                      {
                          var entry = result.Value;
-                         UIInfoText.Text += string.Format("File line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",
-                             result.Key + 2, result.Value.Score, string.Join(",", entry.actors.Select(x => x.ToString())), string.Join(",", entry.titleIndices.Select(x => x.ToString())), string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
+                         UIInfoText.Text += string.Format("File line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Title = [{4}] Description Matches [{5}]",
+                             result.Key + 2, 
+                             result.Value.Score, 
+                             string.Join(",", entry.actors.Select(x => x.ToString())), 
+                             string.Join(",", entry.titleIndices.Select(x => x.ToString())),
+                             entry.title,
+                             string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
                          UIInfoText.Text += "\n";
                      }
                  }
@@ -72,8 +77,12 @@ namespace Diskeyes
                 foreach (var result in results.Take(toTake))
                 {
                     var entry = result.Value;
-                    UIInfoText.Text += string.Format("File line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Description Matches [{4}]",
-                        result.Key + 2, result.Value.Score, string.Join(",", entry.actors.Select(x => x.ToString())), string.Join(",", entry.titleIndices.Select(x => x.ToString())), string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
+                    UIInfoText.Text += string.Format("File line index {0}, Score {1}, Actor matches [{2}] Title Matches [{3}] Title = [{4}] Description Matches [{5}]",
+                        result.Key + 2, result.Value.Score, 
+                        string.Join(",", entry.actors.Select(x => x.ToString())), 
+                        string.Join(",", entry.titleIndices.Select(x => x.ToString())),
+                        entry.title,
+                        string.Join(",", entry.descriptionIndices.Select(x => x.ToString())));
                     UIInfoText.Text += "\n";
                 }
             });
